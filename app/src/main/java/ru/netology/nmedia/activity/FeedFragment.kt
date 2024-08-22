@@ -57,6 +57,7 @@ class FeedFragment : Fragment() {
         viewModel.dataState.observe(viewLifecycleOwner) { state ->
             binding.progress.isVisible = state.loading
             binding.swiperefresh.isRefreshing = state.refreshing
+            binding.exFab.isVisible = state.thereAreNewPosts
             if (state.error) {
                 Snackbar.make(binding.root, R.string.error_loading, Snackbar.LENGTH_LONG)
                     .setAction(R.string.retry_loading) { viewModel.loadPosts() }
@@ -72,6 +73,7 @@ class FeedFragment : Fragment() {
         viewModel.newerCount.observe(viewLifecycleOwner) { state ->
             // TODO: just log it, interaction must be in homework
             println(state)
+            viewModel.flagNewPosts()
         }
 
         binding.swiperefresh.setOnRefreshListener {
@@ -84,7 +86,9 @@ class FeedFragment : Fragment() {
 
         binding.exFab.setOnClickListener {
             viewModel.loadNewPosts()
-            binding.list.postDelayed({binding.list.smoothScrollToPosition(0) }, 500)
+            binding.exFab.isVisible = false
+            binding.list.postDelayed({ binding.list.smoothScrollToPosition(0) }, 500)
+
         }
 
 

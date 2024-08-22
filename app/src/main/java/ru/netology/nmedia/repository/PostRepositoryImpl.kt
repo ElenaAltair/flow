@@ -34,8 +34,19 @@ class PostRepositoryImpl(private val dao: PostDao) : PostRepository {
             val body = response.body() ?: throw ApiError(response.code(), response.message())
             dao.insert(body.toEntity())
             dao.updateShow(idMaxOld)
+
         } catch (e: IOException) {
             throw NetworkError
+        } catch (e: Exception) {
+            throw UnknownError
+        }
+    }
+
+    override suspend fun thereAreNewPosts(): Boolean {
+        try {
+            return if (dao.maxId() > idMaxOld) {
+                true
+            } else false
         } catch (e: Exception) {
             throw UnknownError
         }

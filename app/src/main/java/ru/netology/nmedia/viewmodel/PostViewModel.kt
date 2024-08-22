@@ -70,7 +70,8 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
         try {
             _dataState.value = FeedModelState(loading = true)
             repository.getAll()
-            _dataState.value = FeedModelState()
+            val newPost = repository.thereAreNewPosts()
+            _dataState.value = FeedModelState(thereAreNewPosts = newPost)
         } catch (e: Exception) {
             _dataState.value = FeedModelState(error = true)
         }
@@ -80,7 +81,8 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
         try {
             _dataState.value = FeedModelState(refreshing = true)
             repository.getAll()
-            _dataState.value = FeedModelState()
+            val newPost = repository.thereAreNewPosts()
+            _dataState.value = FeedModelState(thereAreNewPosts = newPost)
         } catch (e: Exception) {
             _dataState.value = FeedModelState(error = true)
         }
@@ -88,7 +90,7 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
 
     fun loadNewPosts() = viewModelScope.launch {
         try {
-            _dataState.value = FeedModelState(loading = true)
+            _dataState.value = FeedModelState(thereAreNewPosts = false)
             repository.getAllNew()
             _dataState.value = FeedModelState()
         } catch (e: Exception) {
@@ -102,7 +104,8 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
             viewModelScope.launch {
                 try {
                     repository.save(it)
-                    _dataState.value = FeedModelState()
+                    val newPost = repository.thereAreNewPosts()
+                    _dataState.value = FeedModelState(thereAreNewPosts = newPost)
                 } catch (e: Exception) {
                     _dataState.value = FeedModelState(error = true)
                 }
@@ -127,6 +130,18 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             try {
                 repository.likeById(id) // идём в class PostRepositoryImpl в функцию likeById(id) и сохраняем изменение лайка поста на сервере и базе
+
+            } catch (e: Exception) {
+                _dataState.value = FeedModelState(error = true)
+            }
+        }
+    }
+
+    fun flagNewPosts() {
+        viewModelScope.launch {
+            try {
+                val newPost = repository.thereAreNewPosts()
+                _dataState.value = FeedModelState(thereAreNewPosts = newPost)
             } catch (e: Exception) {
                 _dataState.value = FeedModelState(error = true)
             }
