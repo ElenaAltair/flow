@@ -33,6 +33,9 @@ interface PostDao {
     @Query("SELECT max(id) FROM PostEntity ")
     suspend fun maxId(): Long
 
-    @Query("UPDATE PostEntity SET show = 1 WHERE id < :id ")
+    @Query("SELECT max(id) FROM PostEntity WHERE show = 1")
+    suspend fun maxVisibleId(): Long
+
+    @Query("UPDATE PostEntity SET show = 1 WHERE id <= :id ")
     suspend fun updateShow(id: Long)
 }

@@ -130,7 +130,8 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             try {
                 repository.likeById(id) // идём в class PostRepositoryImpl в функцию likeById(id) и сохраняем изменение лайка поста на сервере и базе
-
+                val newPost = repository.thereAreNewPosts()
+                _dataState.value = FeedModelState(thereAreNewPosts = newPost)
             } catch (e: Exception) {
                 _dataState.value = FeedModelState(error = true)
             }
