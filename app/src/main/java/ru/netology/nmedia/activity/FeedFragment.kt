@@ -11,6 +11,7 @@ import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
 import com.google.android.material.snackbar.Snackbar
 import ru.netology.nmedia.R
+import ru.netology.nmedia.activity.PhotoBig.Companion.textUrl
 import ru.netology.nmedia.adapter.OnInteractionListener
 import ru.netology.nmedia.adapter.PostsAdapter
 import ru.netology.nmedia.databinding.FragmentFeedBinding
@@ -52,6 +53,18 @@ class FeedFragment : Fragment() {
                     Intent.createChooser(intent, getString(R.string.chooser_share_post))
                 startActivity(shareIntent)
             }
+
+            override fun onImagePhoto(post: Post) {
+                // передадим url изображения выбранного поста
+                // из фрагмента feedFragment во фрагмент photoBig
+                findNavController().navigate(
+                    R.id.action_feedFragment_to_photoBig,
+                    Bundle().apply {
+                        textUrl = post.attachment?.url
+                    }
+                )
+            }
+
         })
         binding.list.adapter = adapter
         viewModel.dataState.observe(viewLifecycleOwner) { state ->
@@ -86,11 +99,8 @@ class FeedFragment : Fragment() {
 
         binding.exFab.setOnClickListener {
             viewModel.loadNewPosts()
-            //binding.exFab.isVisible = false
             binding.list.postDelayed({ binding.list.smoothScrollToPosition(0) }, 500)
-
         }
-
 
         return binding.root
     }
