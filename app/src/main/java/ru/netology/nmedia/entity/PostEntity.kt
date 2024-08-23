@@ -16,11 +16,11 @@ data class PostEntity(
     val likes: Int = 0,
     var show: Int = 1,
 ) {
-    fun toDto() = Post(id, author, authorAvatar, content, published, likedByMe, likes, show)
+    fun toDto() = Post(id, author, authorAvatar, content, published, likedByMe, likes)//, show
 
     companion object {
         fun fromDto(dto: Post) =
-            PostEntity(dto.id, dto.author, dto.authorAvatar, dto.content, dto.published, dto.likedByMe, dto.likes, dto.show)
+            PostEntity(dto.id, dto.author, dto.authorAvatar, dto.content, dto.published, dto.likedByMe, dto.likes)//, dto.show
 
     }
 }

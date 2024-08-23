@@ -17,8 +17,6 @@ import ru.netology.nmedia.error.NetworkError
 import ru.netology.nmedia.error.UnknownError
 import java.io.IOException
 
-var idMaxOld: Long = 0
-
 class PostRepositoryImpl(private val dao: PostDao) : PostRepository {
     override val data = dao.getAll()
         .map(List<PostEntity>::toDto) // преобразуем List<PostEntity> в List<Post>
@@ -33,7 +31,6 @@ class PostRepositoryImpl(private val dao: PostDao) : PostRepository {
 
             val body = response.body() ?: throw ApiError(response.code(), response.message())
             dao.insert(body.toEntity())
-            dao.updateShow(idMaxOld)
 
         } catch (e: IOException) {
             throw NetworkError
@@ -44,7 +41,8 @@ class PostRepositoryImpl(private val dao: PostDao) : PostRepository {
 
     override suspend fun thereAreNewPosts(): Boolean {
         try {
-            return if (dao.maxId() > idMaxOld) {
+            //println("dao.maxId() > dao.maxVisibleId() ${dao.maxId()} > ${dao.maxVisibleId()} = ${dao.maxId() > dao.maxVisibleId()}")
+            return if (dao.maxId() > dao.maxVisibleId()) {
                 true
             } else false
         } catch (e: Exception) {
@@ -54,14 +52,12 @@ class PostRepositoryImpl(private val dao: PostDao) : PostRepository {
 
     override suspend fun getAllNew() {
         try {
-            // Определим текущий максимальный id в базе данных
-            idMaxOld = dao.maxId()
-            dao.updateShow(idMaxOld)
-
+            dao.updateShow(dao.maxId())
         } catch (e: Exception) {
             throw UnknownError
         }
     }
+
 
     override fun getNewerCount(id: Long): Flow<Int> = flow {
         while (true) {
@@ -70,20 +66,14 @@ class PostRepositoryImpl(private val dao: PostDao) : PostRepository {
             if (!response.isSuccessful) {
                 throw ApiError(response.code(), response.message())
             }
-
             val body = response.body() ?: throw ApiError(response.code(), response.message())
-
-
-            dao.insert(body.toEntity())
-            dao.updateShow(idMaxOld)
-            println("idMaxOld $idMaxOld ")
+            dao.insert(body.toEntity().map { it.copy(show = 0) }) // <---
             emit(body.size)
-
-
         }
     }
         .catch { e -> throw AppError.from(e) }
         .flowOn(Dispatchers.Default)
+
 
     override suspend fun save(post: Post) {
         try {
@@ -94,7 +84,7 @@ class PostRepositoryImpl(private val dao: PostDao) : PostRepository {
 
             val body = response.body() ?: throw ApiError(response.code(), response.message())
             dao.insert(PostEntity.fromDto(body))
-            dao.updateShow(idMaxOld)
+            //dao.updateShow(idMaxOld)
         } catch (e: IOException) {
             throw NetworkError
         } catch (e: Exception) {
@@ -130,7 +120,7 @@ class PostRepositoryImpl(private val dao: PostDao) : PostRepository {
                 likes = postFindByIdOld.likes + if (postFindByIdOld.likedByMe) -1 else 1
             )
             dao.insert(postFindByIdNew)
-            dao.updateShow(idMaxOld)
+            //dao.updateShow(idMaxOld)
 
             // делаем запрос на изменение лайка поста на сервере
             val response: Response<Post> = if (!postFindByIdOld.likedByMe) {
@@ -140,7 +130,7 @@ class PostRepositoryImpl(private val dao: PostDao) : PostRepository {
             }
             if (!response.isSuccessful) { // если запрос прошёл неуспешно, выбросить исключение
                 dao.insert(postFindByIdOld) // вернём базу данных к исходному виду
-                dao.updateShow(idMaxOld)
+                //dao.updateShow(idMaxOld)
                 throw ApiError(response.code(), response.message())
             }
 
@@ -148,14 +138,14 @@ class PostRepositoryImpl(private val dao: PostDao) : PostRepository {
             val body = response.body() ?: throw ApiError(response.code(), response.message())
             // сохраняем пост в базе данных
             dao.insert(PostEntity.fromDto(body)) // PostEntity.fromDto(body) - преобразуем Post в PostEntity
-            dao.updateShow(idMaxOld)
+            //dao.updateShow(idMaxOld)
         } catch (e: IOException) {
             dao.insert(postFindByIdOld) // вернём базу данных к исходному виду
-            dao.updateShow(idMaxOld)
+            //dao.updateShow(idMaxOld)
             throw NetworkError
         } catch (e: Exception) {
             dao.insert(postFindByIdOld) // вернём базу данных к исходному виду
-            dao.updateShow(idMaxOld)
+            //dao.updateShow(idMaxOld)
             throw UnknownError
         }
     }

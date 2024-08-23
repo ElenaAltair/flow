@@ -86,7 +86,7 @@ class FeedFragment : Fragment() {
 
         binding.exFab.setOnClickListener {
             viewModel.loadNewPosts()
-            binding.exFab.isVisible = false
+            //binding.exFab.isVisible = false
             binding.list.postDelayed({ binding.list.smoothScrollToPosition(0) }, 500)
 
         }
