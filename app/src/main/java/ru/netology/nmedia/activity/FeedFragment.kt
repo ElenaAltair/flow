@@ -1,5 +1,7 @@
 package ru.netology.nmedia.activity
 
+import android.app.AlertDialog
+import android.content.DialogInterface
 import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -21,12 +23,17 @@ import ru.netology.nmedia.viewmodel.PostViewModel
 class FeedFragment : Fragment() {
 
     private val viewModel: PostViewModel by activityViewModels()
+    var alertDialog: AlertDialog? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
+
+
+        //createDialogSignOut()
+
         val binding = FragmentFeedBinding.inflate(inflater, container, false)
 
         val adapter = PostsAdapter(object : OnInteractionListener {
@@ -35,7 +42,12 @@ class FeedFragment : Fragment() {
             }
 
             override fun onLike(post: Post) {
-                viewModel.likeById(post.id)
+                if (viewModel.isAuthorized) {
+                    viewModel.likeById(post.id)
+                } else {
+                    createDialogSignIn()
+                    alertDialog?.show()
+                }
             }
 
             override fun onRemove(post: Post) {
@@ -80,6 +92,8 @@ class FeedFragment : Fragment() {
         viewModel.data.observe(viewLifecycleOwner) { state ->
             adapter.submitList(state.posts)
             binding.emptyText.isVisible = state.empty
+
+
         }
 
         // подписка на появление новых постов на сервере
@@ -94,7 +108,12 @@ class FeedFragment : Fragment() {
         }
 
         binding.fab.setOnClickListener {
-            findNavController().navigate(R.id.action_feedFragment_to_newPostFragment)
+            if (viewModel.isAuthorized) {
+                findNavController().navigate(R.id.action_feedFragment_to_newPostFragment)
+            } else {
+                createDialogSignIn()
+                alertDialog?.show()
+            }
         }
 
         binding.exFab.setOnClickListener {
@@ -104,4 +123,18 @@ class FeedFragment : Fragment() {
 
         return binding.root
     }
+
+    fun createDialogSignIn() {
+        val alertDialogBuilder = AlertDialog.Builder(context)
+        alertDialogBuilder.setTitle("Log in")
+        alertDialogBuilder.setMessage("To put down likes and add posts, you need to log in. Sign in?")
+        alertDialogBuilder.setPositiveButton("Yes") { _: DialogInterface, _: Int ->
+                findNavController().navigate(
+                    R.id.action_feedFragment_to_signInFragment
+                )
+        }
+        alertDialogBuilder.setNegativeButton("Cancel", { dialogInterface: DialogInterface, i: Int -> })
+        alertDialog = alertDialogBuilder.create()
+    }
+
 }

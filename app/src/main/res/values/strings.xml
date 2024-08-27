@@ -23,4 +23,9 @@
     <string name="loadNewPosts">New Posts</string>
     <string name="image_picker_failed">Image picker failed</string>
     <string name="remove">Remove</string>
+    <string name="logout">Sign out</string>
+    <string name="sign_up">Sign up</string>
+    <string name="sign_in">Sign in</string>
+    <string name="password">Password</string>
+    <string name="login">Login</string>
 </resources>

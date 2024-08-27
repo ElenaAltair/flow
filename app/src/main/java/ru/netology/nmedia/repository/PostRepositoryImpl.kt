@@ -126,7 +126,7 @@ class PostRepositoryImpl(private val dao: PostDao) : PostRepository {
     }
 
     private suspend fun uploade(file: File): Media {
-        try{
+        try {
             val response = PostsApi.service.upload(
                 MultipartBody.Part.createFormData(
                     "file", // "file" - ключ, точно такой же какой ожидает сервер
@@ -205,5 +205,6 @@ class PostRepositoryImpl(private val dao: PostDao) : PostRepository {
             throw UnknownError
         }
     }
+
 
 }

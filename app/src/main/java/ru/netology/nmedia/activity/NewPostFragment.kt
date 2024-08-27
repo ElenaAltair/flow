@@ -47,26 +47,27 @@ class NewPostFragment : Fragment() {
         arguments?.textArg
             ?.let(binding.edit::setText)
 
-        val imagePikerLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()){
-            if (it.resultCode == ImagePicker.RESULT_ERROR){
-                Toast.makeText(
-                    requireContext(),
-                    R.string.image_picker_failed,
-                    Toast.LENGTH_SHORT
-                ).show()
-            }else{
-                val uri = it.data?.data ?: return@registerForActivityResult
+        val imagePikerLauncher =
+            registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+                if (it.resultCode == ImagePicker.RESULT_ERROR) {
+                    Toast.makeText(
+                        requireContext(),
+                        R.string.image_picker_failed,
+                        Toast.LENGTH_SHORT
+                    ).show()
+                } else {
+                    val uri = it.data?.data ?: return@registerForActivityResult
 
-                viewModel.updatePhoto(PhotoModel(uri = uri, file = uri.toFile()))
+                    viewModel.updatePhoto(PhotoModel(uri = uri, file = uri.toFile()))
+                }
             }
-        }
 
-        binding.takePhoto.setOnClickListener{
+        binding.takePhoto.setOnClickListener {
             ImagePicker.with(this)
                 .crop()
                 .maxResultSize(2048, 2048)
                 .cameraOnly() // только камера
-                .createIntent (imagePikerLauncher::launch)
+                .createIntent(imagePikerLauncher::launch)
         }
 
         viewModel.photo.observe(viewLifecycleOwner) { photo ->
@@ -79,11 +80,11 @@ class NewPostFragment : Fragment() {
             binding.photoPrewiew.setImageURI(photo.uri)
         }
 
-        binding.removePhoto.setOnClickListener{
+        binding.removePhoto.setOnClickListener {
             viewModel.clearPhoto()
         }
 
-        binding.gallery.setOnClickListener{
+        binding.gallery.setOnClickListener {
             ImagePicker.with(this)
                 .crop()
                 .maxResultSize(2048, 2048)
@@ -95,10 +96,11 @@ class NewPostFragment : Fragment() {
                         "image/jpg",
                     )
                 )
-                .createIntent (imagePikerLauncher::launch)
+                .createIntent(imagePikerLauncher::launch)
         }
-        
-        requireActivity().addMenuProvider( // меню для окна редактирования
+
+        requireActivity().addMenuProvider(
+            // меню для окна редактирования
             object : MenuProvider {
                 override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
                     menuInflater.inflate(R.menu.create_post_menu, menu)
@@ -110,14 +112,14 @@ class NewPostFragment : Fragment() {
                         viewModel.save()
                         AndroidUtils.hideKeyboard(requireView())
                         true
-                    }else {
+                    } else {
                         false
                     }
 
             },
             viewLifecycleOwner, // когда Lifecycle уничтожится, пункт меню удалится из активити
         )
-        
+
         viewModel.postCreated.observe(viewLifecycleOwner) {
             findNavController().navigateUp()
         }
