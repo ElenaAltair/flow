@@ -21,4 +21,11 @@
     <string name="channel_remote_name">Server notifications</string>
     <string name="channel_remote_description">Notifications from remote server</string>
     <string name="loadNewPosts">New Posts</string>
+    <string name="image_picker_failed">Image picker failed</string>
+    <string name="remove">Remove</string>
+    <string name="logout">Sign out</string>
+    <string name="sign_up">Sign up</string>
+    <string name="sign_in">Sign in</string>
+    <string name="password">Password</string>
+    <string name="login">Login</string>
 </resources>
