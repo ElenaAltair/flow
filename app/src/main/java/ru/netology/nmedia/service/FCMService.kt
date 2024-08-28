@@ -54,7 +54,13 @@ class FCMService : FirebaseMessagingService() {
         // выведем сообщение на экран в лог  //Отправляем сообщения из: https://postman.co
         println("!!!!! ${mess.recipientId} ${mess.content} ${AppAuth.getInstance().authState.value?.id}")
 
-        val AppAuthId = AppAuth.getInstance().authState.value?.id
+        /*
+        Согласно легенде есть такое понятие как анонимная аутентификация,
+        для пушей анонимным пользователям сервер использует id равный нулю,
+        но у вас в приложении в случае анонимной аутентификации appAuthId (переменные именуются со строчной буквы)
+        будет null, что нам не совсем подходит, поэтому можно этот null привести к 0L с помощью элвис-оператора.
+        */
+        val AppAuthId = AppAuth.getInstance().authState.value?.id ?: 0L
         if (mess.recipientId == null) { // массовая рассылка
             pushMess(mess)
         } else if (mess.recipientId == AppAuthId.toString()) { // всё ok, показываете Notification
