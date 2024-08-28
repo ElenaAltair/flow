@@ -60,21 +60,23 @@ class FCMService : FirebaseMessagingService() {
         но у вас в приложении в случае анонимной аутентификации appAuthId (переменные именуются со строчной буквы)
         будет null, что нам не совсем подходит, поэтому можно этот null привести к 0L с помощью элвис-оператора.
         */
-        val AppAuthId = AppAuth.getInstance().authState.value?.id ?: 0L
+        val appAuthId = AppAuth.getInstance().authState.value?.id ?: 0L
         if (mess.recipientId == null) { // массовая рассылка
             pushMess(mess)
-        } else if (mess.recipientId == AppAuthId.toString()) { // всё ok, показываете Notification
+        } else if (mess.recipientId == appAuthId.toString()) { // всё ok, показываете Notification
             pushMess(mess)
-        } else if ((mess.recipientId != AppAuthId.toString() && mess.recipientId != "0")) { // другая аутентификация и вам нужно переотправить свой push token
-            onNewToken(AppAuth.getInstance().authState.value?.token.toString())
-        } else if ((mess.recipientId != AppAuthId.toString() && mess.recipientId == "0")) { // анонимная аутентификация и вам нужно переотправить свой push token
-            onNewToken(AppAuth.getInstance().authState.value?.token.toString())
+        } else { // другая аутентификация и вам нужно переотправить свой push token
+            AppAuth.getInstance().sendPushToken(
+                AppAuth.getInstance().authState.value?.token.toString()
+            )
         }
 
 
     }
 
     // этот метод вызывается при изменении PushToken
+    // onNewToken относится к жизненному циклу FirebaseMessagingService и вызывается автоматически,
+    // когда Firebase обновляет токен устройства
     override fun onNewToken(token: String) {
         //println(token)
         AppAuth.getInstance().sendPushToken(token)

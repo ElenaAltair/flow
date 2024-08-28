@@ -66,23 +66,29 @@ class AppActivity : AppCompatActivity(R.layout.activity_app) {
                     }
                 }
 
-                override fun onMenuItemSelected(menuItem: MenuItem): Boolean =
-                    when (menuItem.itemId) {
+                override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
+                    // Получаем NavController
+                    val navController = findNavController(R.id.nav_host_fragment)
 
+                    // Проверяем текущий фрагмент
+                    val currentFragmentId = navController.currentDestination?.id
+
+                    return when (menuItem.itemId) {
                         R.id.signIn -> {
-                            findNavController(R.id.nav_host_fragment) //
-                                .navigate(
-                                    R.id.action_feedFragment_to_signInFragment
-                                )
+                            if (currentFragmentId == R.id.feedFragment) {
+                                navController.navigate(R.id.action_feedFragment_to_signInFragment)
+                            } else if (currentFragmentId == R.id.signUpFragment) {
+                                navController.navigate(R.id.action_signUpFragment_to_signInFragment)
+                            }
                             true
                         }
 
                         R.id.signUp -> {
-
-                            findNavController(R.id.nav_host_fragment) //
-                                .navigate(
-                                    R.id.action_feedFragment_to_signUpFragment
-                                )
+                            if (currentFragmentId == R.id.feedFragment) {
+                                navController.navigate(R.id.action_feedFragment_to_signUpFragment)
+                            } else if (currentFragmentId == R.id.signInFragment) {
+                                navController.navigate(R.id.action_signInFragment_to_signUpFragment)
+                            }
                             true
                         }
 
@@ -94,6 +100,7 @@ class AppActivity : AppCompatActivity(R.layout.activity_app) {
 
                         else -> false
                     }
+                }
             }
         )
 
