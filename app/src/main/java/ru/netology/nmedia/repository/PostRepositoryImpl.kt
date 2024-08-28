@@ -31,7 +31,7 @@ class PostRepositoryImpl(private val dao: PostDao) : PostRepository {
 
     override suspend fun getAll() {
         try {
-            val response = PostsApi.service.getAll()
+            val response = Api.service.getAll()
             if (!response.isSuccessful) {
                 throw ApiError(response.code(), response.message())
             }
@@ -68,7 +68,7 @@ class PostRepositoryImpl(private val dao: PostDao) : PostRepository {
     override fun getNewerCount(id: Long): Flow<Int> = flow {
         while (true) {
             delay(10_000L)
-            val response = PostsApi.service.getNewer(id)
+            val response = Api.service.getNewer(id)
             if (!response.isSuccessful) {
                 throw ApiError(response.code(), response.message())
             }
@@ -83,7 +83,7 @@ class PostRepositoryImpl(private val dao: PostDao) : PostRepository {
 
     override suspend fun save(post: Post) {
         try {
-            val response = PostsApi.service.save(post)
+            val response = Api.service.save(post)
             if (!response.isSuccessful) {
                 throw ApiError(response.code(), response.message())
             }
@@ -103,7 +103,7 @@ class PostRepositoryImpl(private val dao: PostDao) : PostRepository {
             // сначало отправляем media
             val media = uploade(photoModel.file)
 
-            val response = PostsApi.service.save(
+            val response = Api.service.save(
                 post.copy(
                     attachment = Attachment(
                         url = media.id,
@@ -127,7 +127,7 @@ class PostRepositoryImpl(private val dao: PostDao) : PostRepository {
 
     private suspend fun uploade(file: File): Media {
         try {
-            val response = PostsApi.service.upload(
+            val response = Api.service.upload(
                 MultipartBody.Part.createFormData(
                     "file", // "file" - ключ, точно такой же какой ожидает сервер
                     file.name, // имя файла может быть любым или отсутствовать
@@ -154,7 +154,7 @@ class PostRepositoryImpl(private val dao: PostDao) : PostRepository {
             dao.removeById(id)
 
             // делаем запрос на удаление поста на сервере
-            val response = PostsApi.service.removeById(id)
+            val response = Api.service.removeById(id)
             if (!response.isSuccessful) { // если запрос прошёл неуспешно, выбросить исключение
                 throw ApiError(response.code(), response.message())
             }
@@ -180,9 +180,9 @@ class PostRepositoryImpl(private val dao: PostDao) : PostRepository {
 
             // делаем запрос на изменение лайка поста на сервере
             val response: Response<Post> = if (!postFindByIdOld.likedByMe) {
-                PostsApi.service.likeById(id)
+                Api.service.likeById(id)
             } else {
-                PostsApi.service.dislikeById(id)
+                Api.service.dislikeById(id)
             }
             if (!response.isSuccessful) { // если запрос прошёл неуспешно, выбросить исключение
                 dao.insert(postFindByIdOld) // вернём базу данных к исходному виду

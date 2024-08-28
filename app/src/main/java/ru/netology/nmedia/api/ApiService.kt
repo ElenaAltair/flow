@@ -19,6 +19,7 @@ import ru.netology.nmedia.BuildConfig
 import ru.netology.nmedia.auth.AppAuth
 import ru.netology.nmedia.dto.Media
 import ru.netology.nmedia.dto.Post
+import ru.netology.nmedia.dto.PushToken
 import ru.netology.nmedia.dto.Token
 
 private const val BASE_URL = "${BuildConfig.BASE_URL}/api/slow/"
@@ -30,16 +31,17 @@ private val logging = HttpLoggingInterceptor().apply {
 }
 
 private val okhttp = OkHttpClient.Builder()
-    .addInterceptor(logging)
     .addInterceptor { chain ->
-        val request = AppAuth.getInstance().authState.value?.token?.let { // в случае успеха подставим в каждый запрос заголовка Authorization
-            chain.request().newBuilder()
-                .addHeader("Authorization", it)
-                .build()
-        } ?: chain.request() // если ничего не получилось, возьмём исходный запрос
+        val request =
+            AppAuth.getInstance().authState.value?.token?.let { // в случае успеха подставим в каждый запрос заголовка Authorization
+                chain.request().newBuilder()
+                    .addHeader("Authorization", it)
+                    .build()
+            } ?: chain.request() // если ничего не получилось, возьмём исходный запрос
 
         chain.proceed(request) // функция proceed() принимает запрос и возвращает ответ
     }
+    .addInterceptor(logging)
     .build()
 
 private val retrofit = Retrofit.Builder()
@@ -48,7 +50,11 @@ private val retrofit = Retrofit.Builder()
     .client(okhttp)
     .build()
 
-interface PostsApiService {
+interface ApiService {
+
+    @POST("users/push-tokens")
+    suspend fun save(@Body pushToken: PushToken): Response<Unit>
+
     @GET("posts")
     suspend fun getAll(): Response<List<Post>>
 
@@ -76,15 +82,22 @@ interface PostsApiService {
 
     @FormUrlEncoded
     @POST("users/authentication")
-    suspend fun updateUser(@Field("login") login: String, @Field("pass") pass: String): Response<Token>
+    suspend fun updateUser(
+        @Field("login") login: String,
+        @Field("pass") pass: String
+    ): Response<Token>
 
     @FormUrlEncoded
     @POST("users/registration")
-    suspend fun registerUser(@Field("login") login: String, @Field("pass") pass: String, @Field("name") name: String): Response<Token>
+    suspend fun registerUser(
+        @Field("login") login: String,
+        @Field("pass") pass: String,
+        @Field("name") name: String
+    ): Response<Token>
 }
 
-object PostsApi {
-    val service: PostsApiService by lazy {
-        retrofit.create(PostsApiService::class.java)
+object Api {
+    val service: ApiService by lazy {
+        retrofit.create(ApiService::class.java)
     }
 }

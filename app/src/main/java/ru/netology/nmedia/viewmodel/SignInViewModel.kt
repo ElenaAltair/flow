@@ -5,7 +5,7 @@ import androidx.lifecycle.asLiveData
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
 import retrofit2.Response
-import ru.netology.nmedia.api.PostsApi
+import ru.netology.nmedia.api.Api
 import ru.netology.nmedia.auth.AppAuth
 import ru.netology.nmedia.dto.Token
 import ru.netology.nmedia.error.ApiError
@@ -28,7 +28,7 @@ class SignInViewModel : ViewModel() {
                 val userName = login;
                 val password = pass;
 
-                val responseToken: Response<Token> = PostsApi.service.updateUser(userName, password)
+                val responseToken: Response<Token> = Api.service.updateUser(userName, password)
                 val token: Token = responseToken.body() ?: throw ApiError(
                     responseToken.code(),
                     responseToken.message()

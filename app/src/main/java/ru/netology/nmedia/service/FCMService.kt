@@ -13,6 +13,7 @@ import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import com.google.gson.Gson
 import ru.netology.nmedia.R
+import ru.netology.nmedia.auth.AppAuth
 import kotlin.random.Random
 
 
@@ -36,17 +37,57 @@ class FCMService : FirebaseMessagingService() {
         }
     }
 
+    // метод, который вызывается, при получении сообщения от Firebase
     override fun onMessageReceived(message: RemoteMessage) {
 
-        message.data[action]?.let {
-           when (Action.valueOf(it)) {
-              Action.LIKE -> handleLike(gson.fromJson(message.data[content], Like::class.java))
-           }
+        // message.data[action]?.let {
+        //   when (Action.valueOf(it)) {
+        //      Action.LIKE -> handleLike(gson.fromJson(message.data[content], Like::class.java))
+        //   }
+        // }
+
+
+        val jsonString = message.data[content]
+        println(jsonString)
+        val mess = Gson().fromJson(jsonString, Message::class.java)
+
+        // выведем сообщение на экран в лог  //Отправляем сообщения из: https://postman.co
+        println("!!!!! ${mess.recipientId} ${mess.content} ${AppAuth.getInstance().authState.value?.id}")
+
+        val AppAuthId = AppAuth.getInstance().authState.value?.id
+        if (mess.recipientId == null) { // массовая рассылка
+            pushMess(mess)
+        } else if (mess.recipientId == AppAuthId.toString()) { // всё ok, показываете Notification
+            pushMess(mess)
+        } else if ((mess.recipientId != AppAuthId.toString() && mess.recipientId != "0")) { // другая аутентификация и вам нужно переотправить свой push token
+            onNewToken(AppAuth.getInstance().authState.value?.token.toString())
+        } else if ((mess.recipientId != AppAuthId.toString() && mess.recipientId == "0")) { // анонимная аутентификация и вам нужно переотправить свой push token
+            onNewToken(AppAuth.getInstance().authState.value?.token.toString())
         }
+
+
     }
 
+    // этот метод вызывается при изменении PushToken
     override fun onNewToken(token: String) {
-        println(token)
+        //println(token)
+        AppAuth.getInstance().sendPushToken(token)
+    }
+
+    private fun pushMess(content: Message) {
+        val notification = NotificationCompat.Builder(this, channelId)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle(
+                getString(
+                    R.string.notification_mess,
+                    content.recipientId,
+                    content.content,
+                )
+            )
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .build()
+
+        notify(notification)
     }
 
     private fun handleLike(content: Like) {
@@ -87,5 +128,10 @@ data class Like(
     val userName: String,
     val postId: Long,
     val postAuthor: String,
+)
+
+data class Message(
+    val recipientId: String,
+    val content: String
 )
 

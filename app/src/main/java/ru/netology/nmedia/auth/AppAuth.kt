@@ -2,9 +2,17 @@ package ru.netology.nmedia.auth
 
 import android.content.Context
 import androidx.core.content.edit
+import com.google.firebase.Firebase
+import com.google.firebase.messaging.messaging
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+import ru.netology.nmedia.api.Api
+import ru.netology.nmedia.dto.PushToken
 import ru.netology.nmedia.dto.Token
 
 // Класс отвечающий за авторизацию
@@ -29,6 +37,8 @@ class AppAuth private constructor(context: Context) {
             // сразу объкты в преферансы сохранять нельзя, поэтому дествуем таким образом
             _authState.value = Token(id = id, token = token)
         }
+
+        sendPushToken()
     }
 
     // функция запомнить аутентификацию
@@ -41,6 +51,8 @@ class AppAuth private constructor(context: Context) {
         }
         // теперь обновим _authState
         _authState.value = token
+
+        sendPushToken()
     }
 
     // функция очистить аутентификацию
@@ -50,6 +62,22 @@ class AppAuth private constructor(context: Context) {
         prefs.edit { clear() }
         // теперь обновим _authState
         _authState.value = null
+
+        sendPushToken()
+    }
+
+    fun sendPushToken(token: String? = null) {
+        CoroutineScope(Dispatchers.Default).launch {
+            try {
+                // формируем PushToken
+                val pushToken = PushToken(token ?: Firebase.messaging.token.await())
+
+                // отправляем PushToken на сервер
+                Api.service.save(pushToken)
+            } catch (e: Exception){
+                e.printStackTrace()
+            }
+        }
     }
 
     companion object {
