@@ -1,20 +1,31 @@
 package ru.netology.nmedia.activity
 
 import android.Manifest
+import android.app.AlertDialog
+import android.content.DialogInterface
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.view.Menu
+import android.view.MenuInflater
+import android.view.MenuItem
 import android.widget.Toast
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.MenuProvider
 import androidx.navigation.findNavController
 import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
 import com.google.firebase.messaging.FirebaseMessaging
 import ru.netology.nmedia.R
 import ru.netology.nmedia.activity.NewPostFragment.Companion.textArg
+import ru.netology.nmedia.auth.AppAuth
+import ru.netology.nmedia.viewmodel.AuthViewModel
 
 class AppActivity : AppCompatActivity(R.layout.activity_app) {
+
+    var alertDialog: AlertDialog? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,6 +51,58 @@ class AppActivity : AppCompatActivity(R.layout.activity_app) {
                     }
                 )
         }
+
+        val viewModel by viewModels<AuthViewModel>()
+
+        addMenuProvider(
+            object : MenuProvider {
+                override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
+                    menuInflater.inflate(R.menu.menu_auth, menu) // инициализируем меню menu_auth
+
+                    // подпишемся на изменения данных авторизации
+                    viewModel.data.observe(this@AppActivity) {
+                        menu.setGroupVisible(R.id.authorized, viewModel.isAuthorized)
+                        menu.setGroupVisible(R.id.unauthorized, !viewModel.isAuthorized)
+                    }
+                }
+
+                override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
+                    // Получаем NavController
+                    val navController = findNavController(R.id.nav_host_fragment)
+
+                    // Проверяем текущий фрагмент
+                    val currentFragmentId = navController.currentDestination?.id
+
+                    return when (menuItem.itemId) {
+                        R.id.signIn -> {
+                            if (currentFragmentId == R.id.feedFragment) {
+                                navController.navigate(R.id.action_feedFragment_to_signInFragment)
+                            } else if (currentFragmentId == R.id.signUpFragment) {
+                                navController.navigate(R.id.action_signUpFragment_to_signInFragment)
+                            }
+                            true
+                        }
+
+                        R.id.signUp -> {
+                            if (currentFragmentId == R.id.feedFragment) {
+                                navController.navigate(R.id.action_feedFragment_to_signUpFragment)
+                            } else if (currentFragmentId == R.id.signInFragment) {
+                                navController.navigate(R.id.action_signInFragment_to_signUpFragment)
+                            }
+                            true
+                        }
+
+                        R.id.logout -> {
+                            createDialogSignOut()
+                            alertDialog?.show()
+                            true
+                        }
+
+                        else -> false
+                    }
+                }
+            }
+        )
 
         checkGoogleApiAvailability()
     }
@@ -75,5 +138,18 @@ class AppActivity : AppCompatActivity(R.layout.activity_app) {
         FirebaseMessaging.getInstance().token.addOnSuccessListener {
             println(it)
         }
+    }
+
+    fun createDialogSignOut() {
+        val alertDialogBuilder = AlertDialog.Builder(this)
+        alertDialogBuilder.setTitle("Sign out")
+        alertDialogBuilder.setMessage("Sign out?")
+        alertDialogBuilder.setPositiveButton("Yes") { _: DialogInterface, _: Int ->
+            AppAuth.getInstance().clear()
+        }
+        alertDialogBuilder.setNegativeButton(
+            "Cancel",
+            { dialogInterface: DialogInterface, i: Int -> })
+        alertDialog = alertDialogBuilder.create()
     }
 }

@@ -9,12 +9,15 @@ import androidx.lifecycle.switchMap
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import ru.netology.nmedia.auth.AppAuth
 import ru.netology.nmedia.db.AppDb
 import ru.netology.nmedia.dto.Post
 import ru.netology.nmedia.model.FeedModel
 import ru.netology.nmedia.model.FeedModelState
+import ru.netology.nmedia.model.PhotoModel
 import ru.netology.nmedia.repository.PostRepository
 import ru.netology.nmedia.repository.PostRepositoryImpl
 import ru.netology.nmedia.util.SingleLiveEvent
@@ -23,6 +26,7 @@ private val empty = Post(
     id = 0,
     content = "",
     author = "",
+    authorId = 0L,
     authorAvatar = "",
     likedByMe = false,
     likes = 0,
@@ -35,16 +39,33 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
     private val repository: PostRepository =
         PostRepositoryImpl(AppDb.getInstance(context = application).postDao())
 
-    val data: LiveData<FeedModel> = repository.data
-        .map(::FeedModel)
-        .catch {
-            it.printStackTrace()
+    val data: LiveData<FeedModel> =
+        AppAuth.getInstance().authState.flatMapLatest { token ->
+            repository.data
+                .map {
+                    FeedModel(
+                        it.map { post -> // преобразуем список постов
+                            post.copy(ownedByMe = post.authorId == token?.id)
+                        },
+                        it.isEmpty()
+                    )
+                }
         }
-        .asLiveData(Dispatchers.Default) // преобразуем flow в liveData
+            .catch {
+                it.printStackTrace()
+            }
+            .asLiveData(Dispatchers.Default) // преобразуем flow в liveData
+
+    val isAuthorized: Boolean
+        get() = AppAuth.getInstance().authState.value != null
 
     private val _dataState = MutableLiveData<FeedModelState>()
     val dataState: LiveData<FeedModelState>
         get() = _dataState
+
+    private val _photo = MutableLiveData<PhotoModel?>(null) // по умолчанию ничего нет
+    val photo: LiveData<PhotoModel?>
+        get() = _photo
 
     // newerCount - количество новых постов, которые появились на сервере
     // switchMap позволяет нам пописаться на изменения data и на основании этого получить новую liveData
@@ -103,7 +124,11 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
             _postCreated.value = Unit
             viewModelScope.launch {
                 try {
-                    repository.save(it)
+
+                    _photo.value?.let { photo ->
+                        repository.saveWithAttachment(it, photo)
+                    } ?: repository.save(it)
+
                     val newPost = repository.thereAreNewPosts()
                     _dataState.value = FeedModelState(thereAreNewPosts = newPost)
                 } catch (e: Exception) {
@@ -158,5 +183,13 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
                 _dataState.value = FeedModelState(error = true)
             }
         }
+    }
+
+    fun clearPhoto() {
+        _photo.value = null
+    }
+
+    fun updatePhoto(photoModel: PhotoModel) {
+        _photo.value = photoModel
     }
 }
