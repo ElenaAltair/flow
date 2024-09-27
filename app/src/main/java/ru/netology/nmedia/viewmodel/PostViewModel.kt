@@ -6,20 +6,30 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.asLiveData
 import androidx.lifecycle.switchMap
 import androidx.lifecycle.viewModelScope
+import androidx.paging.PagingData
+import androidx.paging.map
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import retrofit2.Response
 import ru.netology.nmedia.auth.AppAuth
 import ru.netology.nmedia.dto.Post
+import ru.netology.nmedia.dto.Token
+import ru.netology.nmedia.error.ApiError
+import ru.netology.nmedia.error.NetworkError
+import ru.netology.nmedia.error.UnknownError
 import ru.netology.nmedia.model.FeedModel
 import ru.netology.nmedia.model.FeedModelState
 import ru.netology.nmedia.model.PhotoModel
 import ru.netology.nmedia.repository.PostRepository
 import ru.netology.nmedia.util.SingleLiveEvent
+import java.io.IOException
 import javax.inject.Inject
 
 private val empty = Post(
@@ -34,33 +44,22 @@ private val empty = Post(
     //show = 1
 )
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 @ExperimentalCoroutinesApi
 class PostViewModel @Inject constructor(
     private val repository: PostRepository,
     val appAuth: AppAuth,
 ) : ViewModel() {
-//class PostViewModel() : ViewModel() {
-    //private val dependencyContainer = DependencyContainer.getInstance()
-    //private val repository = dependencyContainer.repository
-    //private val appAuth = dependencyContainer.appAuth
 
-    val data: LiveData<FeedModel> =
+    // val data: LiveData<FeedModel> = ...
+    val data: Flow<PagingData<Post>> =
         appAuth.authState.flatMapLatest { token ->
             repository.data
-                .map {
-                    FeedModel(
-                        it.map { post -> // преобразуем список постов
-                            post.copy(ownedByMe = post.authorId == token?.id)
-                        },
-                        it.isEmpty()
-                    )
+                .map { posts ->
+                        posts.map { it.copy(ownedByMe = it.authorId == token?.id) }
                 }
-        }
-            .catch {
-                it.printStackTrace()
-            }
-            .asLiveData(Dispatchers.Default) // преобразуем flow в liveData
+        }.flowOn(Dispatchers.Default)
 
     val isAuthorized: Boolean
         get() = appAuth.authState.value != null
@@ -73,15 +72,21 @@ class PostViewModel @Inject constructor(
     val photo: LiveData<PhotoModel?>
         get() = _photo
 
+
     // newerCount - количество новых постов, которые появились на сервере
     // switchMap позволяет нам пописаться на изменения data и на основании этого получить новую liveData
+    /*
     val newerCount: LiveData<Int> = data.switchMap {
         repository.getNewerCount(
             it.posts.firstOrNull()?.id ?: 0L
         ) // мы запускаем flow c id последнего поста в нашей базе данных
             .catch { e -> e.printStackTrace() }
             .asLiveData(Dispatchers.Default) // преобразование flow в liveData
-    }
+    }*/
+
+
+
+
 
     private val edited = MutableLiveData(empty)
 

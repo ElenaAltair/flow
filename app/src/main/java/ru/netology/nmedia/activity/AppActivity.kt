@@ -22,6 +22,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import ru.netology.nmedia.R
 import ru.netology.nmedia.activity.NewPostFragment.Companion.textArg
 import ru.netology.nmedia.auth.AppAuth
+import ru.netology.nmedia.repository.PostRepository
 import ru.netology.nmedia.viewmodel.AuthViewModel
 import javax.inject.Inject
 
@@ -66,6 +67,10 @@ class AppActivity : AppCompatActivity(R.layout.activity_app) {
                         textArg = text
                     }
                 )
+        }
+
+        viewModel.data.observe(this) {
+            invalidateOptionsMenu()
         }
 
         addMenuProvider(

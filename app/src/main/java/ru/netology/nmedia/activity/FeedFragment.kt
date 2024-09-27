@@ -10,10 +10,13 @@ import android.view.ViewGroup
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
-import androidx.fragment.app.viewModels
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import com.google.android.material.snackbar.Snackbar
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import ru.netology.nmedia.R
 import ru.netology.nmedia.activity.PhotoBig.Companion.textUrl
 import ru.netology.nmedia.adapter.OnInteractionListener
@@ -21,6 +24,8 @@ import ru.netology.nmedia.adapter.PostsAdapter
 import ru.netology.nmedia.databinding.FragmentFeedBinding
 import ru.netology.nmedia.dto.Post
 import ru.netology.nmedia.viewmodel.PostViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.paging.LoadState
 
 // класс отвечающий за ленту постов
 @AndroidEntryPoint
@@ -32,7 +37,6 @@ class FeedFragment : Fragment() {
         ownerProducer = ::requireParentFragment,
     )
     */
-
 
 
     var alertDialog: AlertDialog? = null
@@ -90,7 +94,9 @@ class FeedFragment : Fragment() {
             }
 
         })
+
         binding.list.adapter = adapter
+
         viewModel.dataState.observe(viewLifecycleOwner) { state ->
             binding.progress.isVisible = state.loading
             binding.swiperefresh.isRefreshing = state.refreshing
@@ -101,22 +107,54 @@ class FeedFragment : Fragment() {
                     .show()
             }
         }
-        viewModel.data.observe(viewLifecycleOwner) { state ->
-            adapter.submitList(state.posts)
-            binding.emptyText.isVisible = state.empty
 
-
+        // Устаревший вариант
+        /*
+        lifecycleScope.launchWhenCreated {
+            viewModel.data.collectLatest(adapter::submitData)
         }
 
+        lifecycleScope.launchWhenCreated {
+            adapter.loadStateFlow.collectLatest { state ->
+                binding.swiperefresh.isRefreshing =
+                    state.refresh is LoadState.Loading ||
+                    state.prepend is LoadState.Loading ||
+                    state.append is LoadState.Loading
+            }
+        }
+         */
+
+        // Актуальный вариант
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.data.collectLatest(adapter::submitData)
+            }
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                adapter.loadStateFlow.collectLatest { state ->
+                    binding.swiperefresh.isRefreshing =
+                        state.refresh is LoadState.Loading ||
+                                state.prepend is LoadState.Loading ||
+                                state.append is LoadState.Loading
+                }
+            }
+        }
+
+
         // подписка на появление новых постов на сервере
+
+        /*
         viewModel.newerCount.observe(viewLifecycleOwner) { state ->
             // TODO: just log it, interaction must be in homework
             println(state)
             viewModel.flagNewPosts()
-        }
+        }*/
 
         binding.swiperefresh.setOnRefreshListener {
-            viewModel.refreshPosts()
+            //viewModel.refreshPosts()
+            adapter.refresh()
         }
 
         binding.fab.setOnClickListener {
@@ -141,11 +179,13 @@ class FeedFragment : Fragment() {
         alertDialogBuilder.setTitle("Log in")
         alertDialogBuilder.setMessage("To put down likes and add posts, you need to log in. Sign in?")
         alertDialogBuilder.setPositiveButton("Yes") { _: DialogInterface, _: Int ->
-                findNavController().navigate(
-                    R.id.action_feedFragment_to_signInFragment
-                )
+            findNavController().navigate(
+                R.id.action_feedFragment_to_signInFragment
+            )
         }
-        alertDialogBuilder.setNegativeButton("Cancel", { dialogInterface: DialogInterface, i: Int -> })
+        alertDialogBuilder.setNegativeButton(
+            "Cancel",
+            { dialogInterface: DialogInterface, i: Int -> })
         alertDialog = alertDialogBuilder.create()
     }
 
