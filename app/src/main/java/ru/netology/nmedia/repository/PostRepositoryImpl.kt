@@ -23,15 +23,21 @@ import ru.netology.nmedia.error.UnknownError
 import ru.netology.nmedia.model.PhotoModel
 import java.io.File
 import java.io.IOException
+import javax.inject.Inject
 
-class PostRepositoryImpl(private val dao: PostDao) : PostRepository {
+// научим Dagger Hilt создавать объект типа PostRepository, так чтобя его реализация была PostRepositoryImpl @Inject constructor
+
+class PostRepositoryImpl @Inject constructor(
+    private val dao: PostDao,
+    private val apiService: ApiService, // Api - класс для доступа к сети
+) : PostRepository {
     override val data = dao.getAll()
         .map(List<PostEntity>::toDto) // преобразуем List<PostEntity> в List<Post>
         .flowOn(Dispatchers.Default)
 
     override suspend fun getAll() {
         try {
-            val response = Api.service.getAll()
+            val response = apiService.getAll()
             if (!response.isSuccessful) {
                 throw ApiError(response.code(), response.message())
             }
@@ -48,9 +54,7 @@ class PostRepositoryImpl(private val dao: PostDao) : PostRepository {
 
     override suspend fun thereAreNewPosts(): Boolean {
         try {
-            return if (dao.maxId() > dao.maxVisibleId()) {
-                true
-            } else false
+            return dao.maxId() > dao.maxVisibleId()
         } catch (e: Exception) {
             throw UnknownError
         }
@@ -68,7 +72,7 @@ class PostRepositoryImpl(private val dao: PostDao) : PostRepository {
     override fun getNewerCount(id: Long): Flow<Int> = flow {
         while (true) {
             delay(10_000L)
-            val response = Api.service.getNewer(id)
+            val response = apiService.getNewer(id)
             if (!response.isSuccessful) {
                 throw ApiError(response.code(), response.message())
             }
@@ -83,7 +87,7 @@ class PostRepositoryImpl(private val dao: PostDao) : PostRepository {
 
     override suspend fun save(post: Post) {
         try {
-            val response = Api.service.save(post)
+            val response = apiService.save(post)
             if (!response.isSuccessful) {
                 throw ApiError(response.code(), response.message())
             }
@@ -103,7 +107,7 @@ class PostRepositoryImpl(private val dao: PostDao) : PostRepository {
             // сначало отправляем media
             val media = uploade(photoModel.file)
 
-            val response = Api.service.save(
+            val response = apiService.save(
                 post.copy(
                     attachment = Attachment(
                         url = media.id,
@@ -127,7 +131,7 @@ class PostRepositoryImpl(private val dao: PostDao) : PostRepository {
 
     private suspend fun uploade(file: File): Media {
         try {
-            val response = Api.service.upload(
+            val response = apiService.upload(
                 MultipartBody.Part.createFormData(
                     "file", // "file" - ключ, точно такой же какой ожидает сервер
                     file.name, // имя файла может быть любым или отсутствовать
@@ -154,7 +158,7 @@ class PostRepositoryImpl(private val dao: PostDao) : PostRepository {
             dao.removeById(id)
 
             // делаем запрос на удаление поста на сервере
-            val response = Api.service.removeById(id)
+            val response = apiService.removeById(id)
             if (!response.isSuccessful) { // если запрос прошёл неуспешно, выбросить исключение
                 throw ApiError(response.code(), response.message())
             }
@@ -180,9 +184,9 @@ class PostRepositoryImpl(private val dao: PostDao) : PostRepository {
 
             // делаем запрос на изменение лайка поста на сервере
             val response: Response<Post> = if (!postFindByIdOld.likedByMe) {
-                Api.service.likeById(id)
+                apiService.likeById(id)
             } else {
-                Api.service.dislikeById(id)
+                apiService.dislikeById(id)
             }
             if (!response.isSuccessful) { // если запрос прошёл неуспешно, выбросить исключение
                 dao.insert(postFindByIdOld) // вернём базу данных к исходному виду

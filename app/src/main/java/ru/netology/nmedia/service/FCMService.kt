@@ -12,16 +12,21 @@ import androidx.core.app.NotificationManagerCompat
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import com.google.gson.Gson
+import dagger.hilt.android.AndroidEntryPoint
 import ru.netology.nmedia.R
 import ru.netology.nmedia.auth.AppAuth
+import javax.inject.Inject
 import kotlin.random.Random
 
-
+@AndroidEntryPoint
 class FCMService : FirebaseMessagingService() {
     private val action = "action"
     private val content = "content"
     private val channelId = "remote"
     private val gson = Gson()
+
+    @Inject
+    lateinit var appAuth: AppAuth
 
     override fun onCreate() {
         super.onCreate()
@@ -40,19 +45,12 @@ class FCMService : FirebaseMessagingService() {
     // метод, который вызывается, при получении сообщения от Firebase
     override fun onMessageReceived(message: RemoteMessage) {
 
-        // message.data[action]?.let {
-        //   when (Action.valueOf(it)) {
-        //      Action.LIKE -> handleLike(gson.fromJson(message.data[content], Like::class.java))
-        //   }
-        // }
-
-
         val jsonString = message.data[content]
         println(jsonString)
         val mess = Gson().fromJson(jsonString, Message::class.java)
 
         // выведем сообщение на экран в лог  //Отправляем сообщения из: https://postman.co
-        println("!!!!! ${mess.recipientId} ${mess.content} ${AppAuth.getInstance().authState.value?.id}")
+        println("!!!!! ${mess.recipientId} ${mess.content} ${appAuth.authState.value?.id}")
 
         /*
         Согласно легенде есть такое понятие как анонимная аутентификация,
@@ -60,14 +58,14 @@ class FCMService : FirebaseMessagingService() {
         но у вас в приложении в случае анонимной аутентификации appAuthId (переменные именуются со строчной буквы)
         будет null, что нам не совсем подходит, поэтому можно этот null привести к 0L с помощью элвис-оператора.
         */
-        val appAuthId = AppAuth.getInstance().authState.value?.id ?: 0L
+        val appAuthId = appAuth.authState.value?.id ?: 0L
         if (mess.recipientId == null) { // массовая рассылка
             pushMess(mess)
         } else if (mess.recipientId == appAuthId.toString()) { // всё ok, показываете Notification
             pushMess(mess)
         } else { // другая аутентификация и вам нужно переотправить свой push token
-            AppAuth.getInstance().sendPushToken(
-                AppAuth.getInstance().authState.value?.token.toString()
+            appAuth.sendPushToken(
+                appAuth.authState.value?.token.toString()
             )
         }
 
@@ -79,7 +77,7 @@ class FCMService : FirebaseMessagingService() {
     // когда Firebase обновляет токен устройства
     override fun onNewToken(token: String) {
         //println(token)
-        AppAuth.getInstance().sendPushToken(token)
+        appAuth.sendPushToken(token)
     }
 
     private fun pushMess(content: Message) {

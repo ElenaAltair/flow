@@ -4,6 +4,11 @@ import android.content.Context
 import androidx.core.content.edit
 import com.google.firebase.Firebase
 import com.google.firebase.messaging.messaging
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.android.qualifiers.ApplicationContext
+import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -11,13 +16,23 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
-import ru.netology.nmedia.api.Api
+import ru.netology.nmedia.api.ApiService
 import ru.netology.nmedia.dto.PushToken
 import ru.netology.nmedia.dto.Token
+import javax.inject.Inject
+import javax.inject.Singleton
 
-// Класс отвечающий за авторизацию
+// Класс отвечающий за авторизацию (класс взаимодействует с сетью)
 // Создан приватный конструктор, чтобы нельзя было создавать этот объект из других мест
-class AppAuth private constructor(context: Context) {
+
+// Научим Dagger hint создавать объект класса AppAuth, для этого - @Inject constructor
+// и укажем, что данный объект нужен в единственном экземпляре @Singleton
+
+@Singleton
+class AppAuth @Inject constructor(
+    @ApplicationContext
+    private val context: Context
+) {
 
     // преференсы
     private val prefs = context.getSharedPreferences("auth", Context.MODE_PRIVATE)
@@ -66,20 +81,34 @@ class AppAuth private constructor(context: Context) {
         sendPushToken()
     }
 
+    @InstallIn(SingletonComponent::class)
+    @EntryPoint
+    interface AppAuthEntryPoint {
+        fun getApiService(): ApiService
+    }
+
     fun sendPushToken(token: String? = null) {
         CoroutineScope(Dispatchers.Default).launch {
             try {
                 // формируем PushToken
                 val pushToken = PushToken(token ?: Firebase.messaging.token.await())
 
+                val entryPoint =
+                    EntryPointAccessors.fromApplication(context, AppAuthEntryPoint::class.java)
                 // отправляем PushToken на сервер
-                Api.service.save(pushToken)
-            } catch (e: Exception){
+                entryPoint.getApiService().save(pushToken)
+
+            } catch (e: Exception) {
                 e.printStackTrace()
             }
         }
     }
 
+    companion object {
+        const val TOKEN_KEY = "TOKEN_KEY"
+        const val ID_KEY = "ID_KEY"
+    }
+    /*
     companion object {
         const val TOKEN_KEY = "TOKEN_KEY"
         const val ID_KEY = "ID_KEY"
@@ -96,4 +125,5 @@ class AppAuth private constructor(context: Context) {
             INSTANCE = AppAuth(context.applicationContext)
         }
     }
+    */
 }
