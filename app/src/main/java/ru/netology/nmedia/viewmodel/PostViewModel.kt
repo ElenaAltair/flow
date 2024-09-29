@@ -3,8 +3,6 @@ package ru.netology.nmedia.viewmodel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.asLiveData
-import androidx.lifecycle.switchMap
 import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
 import androidx.paging.map
@@ -12,26 +10,17 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import retrofit2.Response
 import ru.netology.nmedia.auth.AppAuth
+import ru.netology.nmedia.dto.FeedItem
 import ru.netology.nmedia.dto.Post
-import ru.netology.nmedia.dto.Token
-import ru.netology.nmedia.entity.PostRemoteKeyDao
-import ru.netology.nmedia.entity.PostRemoteKeyEntity
-import ru.netology.nmedia.error.ApiError
-import ru.netology.nmedia.error.NetworkError
-import ru.netology.nmedia.error.UnknownError
-import ru.netology.nmedia.model.FeedModel
 import ru.netology.nmedia.model.FeedModelState
 import ru.netology.nmedia.model.PhotoModel
 import ru.netology.nmedia.repository.PostRepository
 import ru.netology.nmedia.util.SingleLiveEvent
-import java.io.IOException
 import javax.inject.Inject
 
 private val empty = Post(
@@ -55,11 +44,19 @@ class PostViewModel @Inject constructor(
 ) : ViewModel() {
 
     // val data: LiveData<FeedModel> = ...
-    val data: Flow<PagingData<Post>> =
+    val data: Flow<PagingData<FeedItem>> =
         appAuth.authState.flatMapLatest { token ->
             repository.data
                 .map { posts ->
-                        posts.map { it.copy(ownedByMe = it.authorId == token?.id) }
+                    posts.map { post ->
+                        // при проверке авторства поста надо проверить тип элемента
+                        // если элемент является постом, то мы проводим копирование
+                        if (post is Post) {
+                            post.copy(ownedByMe = post.authorId == token?.id)
+                        } else { // если элемент является рекламой, то ничего не делаем
+                            post
+                        }
+                    }
                 }
         }.flowOn(Dispatchers.Default)
 

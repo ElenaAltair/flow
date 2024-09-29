@@ -10,9 +10,11 @@ import android.view.ViewGroup
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
+import androidx.paging.LoadState
 import com.google.android.material.snackbar.Snackbar
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.collectLatest
@@ -20,12 +22,11 @@ import kotlinx.coroutines.launch
 import ru.netology.nmedia.R
 import ru.netology.nmedia.activity.PhotoBig.Companion.textUrl
 import ru.netology.nmedia.adapter.OnInteractionListener
+import ru.netology.nmedia.adapter.PostLoadingStateAdapter
 import ru.netology.nmedia.adapter.PostsAdapter
 import ru.netology.nmedia.databinding.FragmentFeedBinding
 import ru.netology.nmedia.dto.Post
 import ru.netology.nmedia.viewmodel.PostViewModel
-import androidx.lifecycle.Lifecycle
-import androidx.paging.LoadState
 
 // класс отвечающий за ленту постов
 @AndroidEntryPoint
@@ -108,6 +109,11 @@ class FeedFragment : Fragment() {
             }
         }
 
+        binding.list.adapter = adapter.withLoadStateHeaderAndFooter(
+            header = PostLoadingStateAdapter { adapter.retry() },
+            footer = PostLoadingStateAdapter { adapter.retry() }
+        )
+
         // Устаревший вариант
         /*
         lifecycleScope.launchWhenCreated {
@@ -146,7 +152,6 @@ class FeedFragment : Fragment() {
         // подписка на появление новых постов на сервере
         /*
         viewModel.newerCount.observe(viewLifecycleOwner) { state ->
-            // TODO: just log it, interaction must be in homework
             println(state)
             viewModel.flagNewPosts()
         }*/

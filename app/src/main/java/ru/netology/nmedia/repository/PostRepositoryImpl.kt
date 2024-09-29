@@ -4,6 +4,7 @@ import androidx.paging.ExperimentalPagingApi
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
+import androidx.paging.insertSeparators
 import androidx.paging.map
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -18,8 +19,10 @@ import retrofit2.Response
 import ru.netology.nmedia.api.ApiService
 import ru.netology.nmedia.dao.PostDao
 import ru.netology.nmedia.db.AppDb
+import ru.netology.nmedia.dto.Ad
 import ru.netology.nmedia.dto.Attachment
 import ru.netology.nmedia.dto.AttachmentType
+import ru.netology.nmedia.dto.FeedItem
 import ru.netology.nmedia.dto.Media
 import ru.netology.nmedia.dto.Post
 import ru.netology.nmedia.entity.PostEntity
@@ -33,6 +36,7 @@ import ru.netology.nmedia.model.PhotoModel
 import java.io.File
 import java.io.IOException
 import javax.inject.Inject
+import kotlin.random.Random
 
 // научим Dagger Hilt создавать объект типа PostRepository, так чтобя его реализация была PostRepositoryImpl @Inject constructor
 
@@ -44,7 +48,7 @@ class PostRepositoryImpl @Inject constructor(
 ) : PostRepository {
 
     @OptIn(ExperimentalPagingApi::class)
-    override val data: Flow<PagingData<Post>> = Pager(
+    override val data: Flow<PagingData<FeedItem>> = Pager(
         config = PagingConfig(pageSize = 5, enablePlaceholders = false),
         pagingSourceFactory = { postDao.pagingSource() },
         remoteMediator = PostRemoteMediator(
@@ -52,9 +56,31 @@ class PostRepositoryImpl @Inject constructor(
             postDao = postDao,
             postRemoteKeyDao = postRemoteKeyDao,
             appDb = appDb,
-            )
-    ).flow
-        .map { it.map(PostEntity::toDto) } // преобразуем PostEntity к Post
+        )
+    ).flow.map { pagingData ->
+        pagingData.map(PostEntity::toDto) // преобразуем PostEntity к Post
+            .insertSeparators { previous, _ -> // вставим элементы с рекламой
+                // previous - предыдущий элемент, next - следующий элемент,
+                // если мы попадаем в начало списка, то previous = null,
+                // если мы попадаем в конец списка, то next = null
+
+                // next у нас не используется, поэтому будем его игнорировать: _
+
+                // Расмотрим пример динамической генерации рекламы
+                // (через каждые 5 элементов у нас будет появляться реклама)
+
+                // берём id предыдущего элемента, находим остаток от деления его на 5,
+                // если он равен нулю, то создаём рекламу
+                if (previous?.id?.rem(5) == 0L) {
+                    // раз это тестовый пример, то для id воспользуемся генерацией случайного числа
+                    // "figma.jpg" - картинка, которая хранится на сервере
+                    Ad(Random.nextLong(), "figma.jpg")
+                } else {
+                    null
+                }
+
+            }
+    }
 
     override suspend fun getAll() {
         try {
