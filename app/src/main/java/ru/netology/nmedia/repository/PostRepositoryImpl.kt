@@ -1,23 +1,29 @@
 package ru.netology.nmedia.repository
 
+import androidx.paging.ExperimentalPagingApi
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
+import androidx.paging.PagingData
+import androidx.paging.map
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import retrofit2.Response
 import ru.netology.nmedia.api.ApiService
 import ru.netology.nmedia.dao.PostDao
+import ru.netology.nmedia.db.AppDb
 import ru.netology.nmedia.dto.Attachment
 import ru.netology.nmedia.dto.AttachmentType
 import ru.netology.nmedia.dto.Media
 import ru.netology.nmedia.dto.Post
 import ru.netology.nmedia.entity.PostEntity
+import ru.netology.nmedia.entity.PostRemoteKeyDao
 import ru.netology.nmedia.entity.toEntity
 import ru.netology.nmedia.error.ApiError
 import ru.netology.nmedia.error.AppError
@@ -31,24 +37,24 @@ import javax.inject.Inject
 // научим Dagger Hilt создавать объект типа PostRepository, так чтобя его реализация была PostRepositoryImpl @Inject constructor
 
 class PostRepositoryImpl @Inject constructor(
-    private val dao: PostDao,
+    private val postDao: PostDao,
     private val apiService: ApiService, // Api - класс для доступа к сети
+    postRemoteKeyDao: PostRemoteKeyDao,
+    appDb: AppDb,
 ) : PostRepository {
 
-    /*
-    override val data = dao.getAll()
-        .map(List<PostEntity>::toDto) // преобразуем List<PostEntity> в List<Post>
-        .flowOn(Dispatchers.Default)
-
-     */
-    override val data = Pager(
-        config = PagingConfig(pageSize = 10, enablePlaceholders = false),
-        pagingSourceFactory = {
-            PostPagingSource(
-                apiService
+    @OptIn(ExperimentalPagingApi::class)
+    override val data: Flow<PagingData<Post>> = Pager(
+        config = PagingConfig(pageSize = 5, enablePlaceholders = false),
+        pagingSourceFactory = { postDao.pagingSource() },
+        remoteMediator = PostRemoteMediator(
+            service = apiService,
+            postDao = postDao,
+            postRemoteKeyDao = postRemoteKeyDao,
+            appDb = appDb,
             )
-        }
     ).flow
+        .map { it.map(PostEntity::toDto) } // преобразуем PostEntity к Post
 
     override suspend fun getAll() {
         try {
@@ -58,7 +64,7 @@ class PostRepositoryImpl @Inject constructor(
             }
 
             val body = response.body() ?: throw ApiError(response.code(), response.message())
-            dao.insert(body.toEntity())
+            postDao.insert(body.toEntity())
 
         } catch (e: IOException) {
             throw NetworkError
@@ -69,7 +75,7 @@ class PostRepositoryImpl @Inject constructor(
 
     override suspend fun thereAreNewPosts(): Boolean {
         try {
-            return dao.maxId() > dao.maxVisibleId()
+            return postDao.maxId() > postDao.maxVisibleId()
         } catch (e: Exception) {
             throw UnknownError
         }
@@ -77,7 +83,7 @@ class PostRepositoryImpl @Inject constructor(
 
     override suspend fun getAllNew() {
         try {
-            dao.updateShow(dao.maxId())
+            postDao.updateShow(postDao.maxId())
         } catch (e: Exception) {
             throw UnknownError
         }
@@ -92,7 +98,7 @@ class PostRepositoryImpl @Inject constructor(
                 throw ApiError(response.code(), response.message())
             }
             val body = response.body() ?: throw ApiError(response.code(), response.message())
-            dao.insert(body.toEntity().map { it.copy(show = 0) }) // <---
+            postDao.insert(body.toEntity().map { it.copy(show = 0) }) // <---
             emit(body.size)
         }
     }
@@ -108,7 +114,7 @@ class PostRepositoryImpl @Inject constructor(
             }
 
             val body = response.body() ?: throw ApiError(response.code(), response.message())
-            dao.insert(PostEntity.fromDto(body))
+            postDao.insert(PostEntity.fromDto(body))
 
         } catch (e: IOException) {
             throw NetworkError
@@ -135,7 +141,7 @@ class PostRepositoryImpl @Inject constructor(
             }
 
             val body = response.body() ?: throw ApiError(response.code(), response.message())
-            dao.insert(PostEntity.fromDto(body))
+            postDao.insert(PostEntity.fromDto(body))
 
         } catch (e: IOException) {
             throw NetworkError
@@ -170,7 +176,7 @@ class PostRepositoryImpl @Inject constructor(
     override suspend fun removeById(id: Long) {
         try {
             // удаляем пост в базе данных
-            dao.removeById(id)
+            postDao.removeById(id)
 
             // делаем запрос на удаление поста на сервере
             val response = apiService.removeById(id)
@@ -187,14 +193,14 @@ class PostRepositoryImpl @Inject constructor(
     }
 
     override suspend fun likeById(id: Long) {
-        var postFindByIdOld = dao.findById(id)
+        var postFindByIdOld = postDao.findById(id)
         try {
             // сохраняем пост в базе данных
             val postFindByIdNew = postFindByIdOld.copy(
                 likedByMe = !postFindByIdOld.likedByMe,
                 likes = postFindByIdOld.likes + if (postFindByIdOld.likedByMe) -1 else 1
             )
-            dao.insert(postFindByIdNew)
+            postDao.insert(postFindByIdNew)
             //dao.updateShow(idMaxOld)
 
             // делаем запрос на изменение лайка поста на сервере
@@ -204,7 +210,7 @@ class PostRepositoryImpl @Inject constructor(
                 apiService.dislikeById(id)
             }
             if (!response.isSuccessful) { // если запрос прошёл неуспешно, выбросить исключение
-                dao.insert(postFindByIdOld) // вернём базу данных к исходному виду
+                postDao.insert(postFindByIdOld) // вернём базу данных к исходному виду
                 //dao.updateShow(idMaxOld)
                 throw ApiError(response.code(), response.message())
             }
@@ -212,14 +218,14 @@ class PostRepositoryImpl @Inject constructor(
             // в качетве тела запроса нам возвращается Post
             val body = response.body() ?: throw ApiError(response.code(), response.message())
             // сохраняем пост в базе данных
-            dao.insert(PostEntity.fromDto(body)) // PostEntity.fromDto(body) - преобразуем Post в PostEntity
+            postDao.insert(PostEntity.fromDto(body)) // PostEntity.fromDto(body) - преобразуем Post в PostEntity
             //dao.updateShow(idMaxOld)
         } catch (e: IOException) {
-            dao.insert(postFindByIdOld) // вернём базу данных к исходному виду
+            postDao.insert(postFindByIdOld) // вернём базу данных к исходному виду
             //dao.updateShow(idMaxOld)
             throw NetworkError
         } catch (e: Exception) {
-            dao.insert(postFindByIdOld) // вернём базу данных к исходному виду
+            postDao.insert(postFindByIdOld) // вернём базу данных к исходному виду
             //dao.updateShow(idMaxOld)
             throw UnknownError
         }

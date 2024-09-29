@@ -144,7 +144,6 @@ class FeedFragment : Fragment() {
 
 
         // подписка на появление новых постов на сервере
-
         /*
         viewModel.newerCount.observe(viewLifecycleOwner) { state ->
             // TODO: just log it, interaction must be in homework

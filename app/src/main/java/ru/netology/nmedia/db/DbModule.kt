@@ -38,7 +38,7 @@ class DbModule {
         .build()
 
     @Provides
-    fun providepostDao(
+    fun providePostDao(
         appDb: AppDb
     ): PostDao = appDb.postDao()
 }

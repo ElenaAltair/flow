@@ -21,6 +21,8 @@ import retrofit2.Response
 import ru.netology.nmedia.auth.AppAuth
 import ru.netology.nmedia.dto.Post
 import ru.netology.nmedia.dto.Token
+import ru.netology.nmedia.entity.PostRemoteKeyDao
+import ru.netology.nmedia.entity.PostRemoteKeyEntity
 import ru.netology.nmedia.error.ApiError
 import ru.netology.nmedia.error.NetworkError
 import ru.netology.nmedia.error.UnknownError
@@ -78,15 +80,13 @@ class PostViewModel @Inject constructor(
     /*
     val newerCount: LiveData<Int> = data.switchMap {
         repository.getNewerCount(
-            it.posts.firstOrNull()?.id ?: 0L
+            postRemoteKeyEntity.key
+            //it.posts.firstOrNull()?.id ?: 0L
         ) // мы запускаем flow c id последнего поста в нашей базе данных
             .catch { e -> e.printStackTrace() }
             .asLiveData(Dispatchers.Default) // преобразование flow в liveData
-    }*/
-
-
-
-
+    }
+    */
 
     private val edited = MutableLiveData(empty)
 
