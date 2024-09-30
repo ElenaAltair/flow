@@ -76,10 +76,7 @@ class PostViewModel @Inject constructor(
     // switchMap позволяет нам пописаться на изменения data и на основании этого получить новую liveData
     /*
     val newerCount: LiveData<Int> = data.switchMap {
-        repository.getNewerCount(
-            postRemoteKeyEntity.key
-            //it.posts.firstOrNull()?.id ?: 0L
-        ) // мы запускаем flow c id последнего поста в нашей базе данных
+        repository.getNewerCount()
             .catch { e -> e.printStackTrace() }
             .asLiveData(Dispatchers.Default) // преобразование flow в liveData
     }
@@ -98,7 +95,8 @@ class PostViewModel @Inject constructor(
     fun loadPosts() = viewModelScope.launch {
         try {
             _dataState.value = FeedModelState(loading = true)
-            repository.getAll()
+            //repository.getAll()
+            _dataState.value = FeedModelState()
             val newPost = repository.thereAreNewPosts()
             _dataState.value = FeedModelState(thereAreNewPosts = newPost)
         } catch (e: Exception) {
@@ -109,7 +107,8 @@ class PostViewModel @Inject constructor(
     fun refreshPosts() = viewModelScope.launch {
         try {
             _dataState.value = FeedModelState(refreshing = true)
-            repository.getAll()
+            //repository.getAll()
+            _dataState.value = FeedModelState()
             val newPost = repository.thereAreNewPosts()
             _dataState.value = FeedModelState(thereAreNewPosts = newPost)
         } catch (e: Exception) {

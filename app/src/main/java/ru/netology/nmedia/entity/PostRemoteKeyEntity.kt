@@ -8,7 +8,7 @@ data class PostRemoteKeyEntity(
     // KeyType - это свойство будет являться первичным ключом для таблицы PostRemoteKeyEntity
     @PrimaryKey
     val type: KeyType,
-    val key: Long, // - id поста
+    val id: Long, // - id поста
 ) {
     // у нас будет только два типа данных:
     // пост, который находится на самом верху и пост в самом низу
