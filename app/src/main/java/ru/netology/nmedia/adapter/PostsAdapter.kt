@@ -1,15 +1,18 @@
 package ru.netology.nmedia.adapter
 
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import android.widget.PopupMenu
+import androidx.core.view.isVisible
+import androidx.paging.PagingDataAdapter
 import androidx.recyclerview.widget.DiffUtil
-import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import ru.netology.nmedia.BuildConfig
 import ru.netology.nmedia.R
 import ru.netology.nmedia.databinding.CardPostBinding
 import ru.netology.nmedia.dto.Post
+import ru.netology.nmedia.view.load
 import ru.netology.nmedia.view.loadCircleCrop
 
 interface OnInteractionListener {
@@ -17,18 +20,19 @@ interface OnInteractionListener {
     fun onEdit(post: Post) {}
     fun onRemove(post: Post) {}
     fun onShare(post: Post) {}
+    fun onImagePhoto(post: Post) {}
 }
 
 class PostsAdapter(
     private val onInteractionListener: OnInteractionListener,
-) : ListAdapter<Post, PostViewHolder>(PostDiffCallback()) {
+) : PagingDataAdapter<Post, PostViewHolder>(PostDiffCallback()) {
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PostViewHolder {
         val binding = CardPostBinding.inflate(LayoutInflater.from(parent.context), parent, false)
         return PostViewHolder(binding, onInteractionListener)
     }
 
     override fun onBindViewHolder(holder: PostViewHolder, position: Int) {
-        val post = getItem(position)
+        val post = getItem(position) ?: return
         holder.bind(post)
     }
 }
@@ -47,6 +51,19 @@ class PostViewHolder(
             like.isChecked = post.likedByMe
             like.text = "${post.likes}"
 
+            if (post.attachment != null && post.attachment?.url != null && post.attachment?.url != "") {
+                imagePhoto.load("${BuildConfig.BASE_URL}/media/${post.attachment?.url}")
+                imagePhoto.visibility = View.VISIBLE
+            } else {
+                imagePhoto.visibility = View.GONE
+            }
+
+            imagePhoto.setOnClickListener {
+                onInteractionListener.onImagePhoto(post)
+            }
+
+            menu.isVisible = post.ownedByMe // меню видно только, если мы авторы поста
+
             menu.setOnClickListener {
                 PopupMenu(it.context, it).apply {
                     inflate(R.menu.options_post)
@@ -56,6 +73,7 @@ class PostViewHolder(
                                 onInteractionListener.onRemove(post)
                                 true
                             }
+
                             R.id.edit -> {
                                 onInteractionListener.onEdit(post)
                                 true
