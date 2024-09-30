@@ -22,4 +22,12 @@
     <string name="channel_remote_name">Уведомления с сервера</string>
     <string name="channel_remote_description">Уведомления с удалённого сервера</string>
     <string name="loadNewPosts">Новые посты</string>
+    <string name="image_picker_failed">Image picker failed</string>
+    <string name="remove">Remove</string>
+    <string name="logout">Выйти</string>
+    <string name="sign_up">Зарегистрироваться</string>
+    <string name="sign_in">Войти</string>
+    <string name="password">Password</string>
+    <string name="login">Login</string>
+    <string name="retri">Retry</string>
 </resources>
