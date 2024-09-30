@@ -9,7 +9,7 @@ import ru.netology.nmedia.api.ApiService
 import ru.netology.nmedia.dao.PostDao
 import ru.netology.nmedia.db.AppDb
 import ru.netology.nmedia.entity.PostEntity
-import ru.netology.nmedia.entity.PostRemoteKeyDao
+import ru.netology.nmedia.dao.PostRemoteKeyDao
 import ru.netology.nmedia.entity.PostRemoteKeyEntity
 import ru.netology.nmedia.error.ApiError
 
@@ -35,7 +35,18 @@ class PostRemoteMediator(
                 // REFRESH не затирал предыдущий кеш, а добавлял данные сверху,
                 // учитывая ID последнего поста сверху.
                 // Соответственно, swipe to refresh должен добавлять данные, а не затирать их.
-                LoadType.REFRESH -> service.getLatest(state.config.pageSize)
+                LoadType.REFRESH -> {
+
+                    val id = postRemoteKeyDao.max() ?: 0L
+
+                    if(id > 0L){
+                        service.getAfter(id, state.config.pageSize)
+                    } else {
+                        service.getLatest(state.config.pageSize)
+                    }
+
+                }
+
 
                 // пользователь скролит наверх (запрос на получение верхней страницы)
                 // state.firstItemOrNull()?.id - id самого первого элемента в отображённом списке

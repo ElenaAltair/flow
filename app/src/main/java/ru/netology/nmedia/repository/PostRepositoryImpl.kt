@@ -23,7 +23,7 @@ import ru.netology.nmedia.dto.AttachmentType
 import ru.netology.nmedia.dto.Media
 import ru.netology.nmedia.dto.Post
 import ru.netology.nmedia.entity.PostEntity
-import ru.netology.nmedia.entity.PostRemoteKeyDao
+import ru.netology.nmedia.dao.PostRemoteKeyDao
 import ru.netology.nmedia.entity.toEntity
 import ru.netology.nmedia.error.ApiError
 import ru.netology.nmedia.error.AppError
@@ -39,7 +39,7 @@ import javax.inject.Inject
 class PostRepositoryImpl @Inject constructor(
     private val postDao: PostDao,
     private val apiService: ApiService, // Api - класс для доступа к сети
-    postRemoteKeyDao: PostRemoteKeyDao,
+    private val postRemoteKeyDao: PostRemoteKeyDao,
     appDb: AppDb,
 ) : PostRepository {
 
@@ -56,9 +56,11 @@ class PostRepositoryImpl @Inject constructor(
     ).flow
         .map { it.map(PostEntity::toDto) } // преобразуем PostEntity к Post
 
+    /*
     override suspend fun getAll() {
         try {
             val response = apiService.getAll()
+            // val response = apiService.getLatest(5)
             if (!response.isSuccessful) {
                 throw ApiError(response.code(), response.message())
             }
@@ -72,6 +74,7 @@ class PostRepositoryImpl @Inject constructor(
             throw UnknownError
         }
     }
+    */
 
     override suspend fun thereAreNewPosts(): Boolean {
         try {
@@ -89,14 +92,37 @@ class PostRepositoryImpl @Inject constructor(
         }
     }
 
-
-    override fun getNewerCount(id: Long): Flow<Int> = flow {
+    override fun getNewerCount(): Flow<Int> = flow {
         while (true) {
+            // Определим максимальный id в бд
+            val id = postRemoteKeyDao.max() ?: 0L
+
             delay(10_000L)
-            val response = apiService.getNewer(id)
+            val response = apiService.getNewerCount(id)
+
             if (!response.isSuccessful) {
                 throw ApiError(response.code(), response.message())
             }
+            val count = response.body()!!
+            emit(count.toInt())
+        }
+    }
+        .catch { e -> throw AppError.from(e) }
+        .flowOn(Dispatchers.Default)
+
+    /*
+    override fun getNewerCount(): Flow<Int> = flow {
+        while (true) {
+            // Определим максимальный id в бд
+            val id = postRemoteKeyDao.max() ?: 0L
+
+            delay(10_000L)
+            val response = apiService.getNewer(id)
+
+            if (!response.isSuccessful) {
+                throw ApiError(response.code(), response.message())
+            }
+
             val body = response.body() ?: throw ApiError(response.code(), response.message())
             postDao.insert(body.toEntity().map { it.copy(show = 0) }) // <---
             emit(body.size)
@@ -104,7 +130,7 @@ class PostRepositoryImpl @Inject constructor(
     }
         .catch { e -> throw AppError.from(e) }
         .flowOn(Dispatchers.Default)
-
+    */
 
     override suspend fun save(post: Post) {
         try {

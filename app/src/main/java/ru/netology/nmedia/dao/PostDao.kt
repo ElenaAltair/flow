@@ -10,8 +10,7 @@ import ru.netology.nmedia.entity.PostEntity
 
 @Dao
 interface PostDao {
-    @Query("SELECT * FROM PostEntity WHERE show = 1 ORDER BY id DESC") //
-    fun getAll(): Flow<List<PostEntity>>
+
 
     @Query("SELECT * FROM PostEntity ORDER BY id DESC")
     fun pagingSource(): PagingSource<Int, PostEntity> // здесь ключ Int - это номер страницы

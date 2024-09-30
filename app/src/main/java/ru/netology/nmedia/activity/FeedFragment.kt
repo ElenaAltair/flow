@@ -133,6 +133,7 @@ class FeedFragment : Fragment() {
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                
                 adapter.loadStateFlow.collectLatest { state ->
                     binding.swiperefresh.isRefreshing =
                         state.refresh is LoadState.Loading ||
@@ -143,10 +144,10 @@ class FeedFragment : Fragment() {
         }
 
 
+
         // подписка на появление новых постов на сервере
         /*
         viewModel.newerCount.observe(viewLifecycleOwner) { state ->
-            // TODO: just log it, interaction must be in homework
             println(state)
             viewModel.flagNewPosts()
         }*/

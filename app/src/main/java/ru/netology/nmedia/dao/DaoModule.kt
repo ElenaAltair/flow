@@ -5,7 +5,6 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import ru.netology.nmedia.db.AppDb
-import ru.netology.nmedia.entity.PostRemoteKeyDao
 
 @InstallIn(SingletonComponent::class)
 @Module
